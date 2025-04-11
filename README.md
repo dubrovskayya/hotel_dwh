@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This project aims to create a basic analytical Data Warehouse (DWH) for a hotel, designed following Kimball's principles with support for data historization (SCD). It covers key stages of DWH development, including data modeling and database creation (documented separately), as well as the implementation of data generation, an automated ETL pipeline, and visualization. The pipeline generates synthetic hotel data (bookings and stays), extracts and transforms it into a structured DWH, automates the process via orchestration, and provides insights through visualized analytics.
+This project aims to create a basic analytical Data Warehouse (DWH) for a hotel, designed following Kimball's principles with support for data historization (SCD). It covers key stages of DWH development, including data modeling and database creation, as well as the implementation of data generation, an automated ETL pipeline, and visualization. The pipeline generates synthetic hotel data (new data for fact tables, new data and updates for dimension tables), extracts and transforms it into a structured DWH, automates the process via orchestration, and provides insights through visualized analytics.
 
 ## Project Structure
 
