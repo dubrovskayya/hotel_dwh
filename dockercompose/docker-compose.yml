@@ -1,0 +1,115 @@
+services:
+  postgres_source:
+    image: postgres:latest
+    container_name: source_crm
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: source_crm
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_data_source:/var/lib/postgresql/data
+
+  postgres_dwh:
+    image: postgres:latest
+    container_name: dwh
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: dwh
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_data_dwh:/var/lib/postgresql/data
+
+  postgres_airflow:
+    image: postgres:latest
+    container_name: postgres_airflow
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow_db
+    ports:
+      - "5437:5432"
+    volumes:
+      - postgres_data_airflow_new:/var/lib/postgresql/data
+
+  airflow_webserver:
+    image: apache/airflow:2.5.0
+    container_name: airflow_webserver
+    environment:
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres_airflow:5432/airflow_db
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__WEBSERVER__SECRET_KEY=my_secret_key
+      - AIRFLOW__WEBSERVER__RBAC=True
+      - AIRFLOW__WEBSERVER__WORKERS=4
+      - AIRFLOW__WEBSERVER__WEB_SERVER_PORT=8080
+      - AIRFLOW__CORE__DEFAULT_TIMEZONE=Europe/Minsk
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./requirements.txt:/requirements.txt
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres_airflow
+    entrypoint: /bin/bash -c "pip install --no-cache-dir -r /requirements.txt && exec airflow standalone"
+
+  airflow_scheduler:
+    image: apache/airflow:2.5.0
+    container_name: airflow_scheduler
+    environment:
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres_airflow/airflow_db
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__WEBSERVER__SECRET_KEY=my_secret_key
+      - AIRFLOW__WEBSERVER__RBAC=True
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__DEFAULT_TIMEZONE=Europe/Minsk
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./requirements.txt:/requirements.txt
+    depends_on:
+      - postgres_airflow
+    entrypoint: /bin/bash -c "pip install --no-cache-dir -r /requirements.txt && exec airflow scheduler"
+
+  superset:
+    image: apache/superset:latest
+    container_name: superset
+    environment:
+      - SUPERSET_SECRET_KEY=your_secret_key_here
+      - SUPERSET_LOAD_EXAMPLES=no
+      - DATABASE_URL=postgresql+psycopg2://superset:superset@postgres_superset:5432/superset_db
+    ports:
+      - "8088:8088"
+    depends_on:
+      - postgres_superset
+    volumes:
+      - ./superset:/app/superset_home
+    entrypoint: >
+      bash -c "
+      superset db upgrade &&
+      superset fab create-admin --username admin --firstname Admin --lastname User --email admin@example.com --password admin &&
+      superset init &&
+      gunicorn -w 4 -b 0.0.0.0:8088 'superset.app:create_app()'
+      "
+
+  postgres_superset:
+    image: postgres:latest
+    container_name: postgres_superset
+    environment:
+      POSTGRES_USER: superset
+      POSTGRES_PASSWORD: superset
+      POSTGRES_DB: superset_db
+    ports:
+      - "5438:5432"
+    volumes:
+      - postgres_data_superset:/var/lib/postgresql/data
+
+volumes:
+  postgres_data_source:
+  postgres_data_dwh:
+  postgres_data_airflow_new:
+  postgres_data_superset:
