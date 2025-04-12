@@ -95,7 +95,6 @@ def load_dim_with_scd2(stg_schema, dwh_schema, table_name, columns, key_column, 
                         WHERE load_dttm > '{last_process_time}' -- только записи, которые были добавлены позже последнего процесса
                             )
             """
-            logger.info(f'{actual_records_in_stage_placeholder}')
 
             # получение максимального количества версий одной записи,
             # которые накопились в стейдже с момента последней загрузки в dwh
@@ -106,7 +105,6 @@ def load_dim_with_scd2(stg_schema, dwh_schema, table_name, columns, key_column, 
                                          """
             cursor.execute(get_max_number_of_versions)
             max_number_of_versions = cursor.fetchone()
-            logger.info(f'{max_number_of_versions}')
             if max_number_of_versions[0] is not None:
                 max_number_of_versions = max_number_of_versions[0]
                 logger.info(f'Max level of versions for {table_name} at {datetime.now()} is {max_number_of_versions}')
@@ -180,7 +178,7 @@ def load_dim_with_scd2(stg_schema, dwh_schema, table_name, columns, key_column, 
                     FROM 
                         cte pgd
                     WHERE 
-                        pgd.version_number = {i},
+                        pgd.version_number = {i}
                         AND pgd.is_active_in_source = TRUE
                         AND EXISTS (
                             SELECT 1
@@ -228,6 +226,7 @@ def load_dim_with_scd2(stg_schema, dwh_schema, table_name, columns, key_column, 
         # логирование в случае ошибки и остановка процесса
         except Exception as e:
             logger.error(f'Error during loading from stage to dwh for table {table_name}. Error : {str(e)}')
+            conn.rollback()
             end_logging_with_error(dwh_schema, table_name, start_time, conn, 0, 'dwh_load_logs', str(e))
             raise
 
@@ -378,7 +377,6 @@ def load_fact(stg_schema, dwh_schema, table_name, date_columns, sk_mapping, matc
                 WHERE 
                     stg.load_dttm > '{last_process_time}';  --только записи, которые были добавлены после последнего процесса
             """
-            # print(insert_records_query)
             cursor.execute(insert_records_query)
             rows_inserted = cursor.rowcount
             conn.commit()
@@ -390,79 +388,12 @@ def load_fact(stg_schema, dwh_schema, table_name, date_columns, sk_mapping, matc
         # логирование в случае ошибки и остановка процесса
         except Exception as e:
             logger.error(f'Error during loading from stage to dwh for table {table_name}. Error : {str(e)}')
+            conn.rollback()
             end_logging_with_error(dwh_schema, table_name, start_time, conn, 0, 'dwh_load_logs', str(e))
             raise
 
 
-# дайменшаны должнв загужаться перд фактами
-# if __name__ == "__main__":
-#     ### booking dim
-#     booking_dim_columns_nonkey = ['status', 'expected_length_of_stay']
-#     load_dim_with_scd1('public', 'dwh', 'booking_dim', booking_dim_columns_nonkey, 'booking_id')
-#
-#     ### guests dim
-#     guests_dim_columns = ['guest_id',
-#                           'first_name',
-#                           'last_name',
-#                           'gender',
-#                           'date_of_birth',
-#                           'nationality',
-#                           'country_of_residence']
-#
-#     load_dim_with_scd2('public', 'dwh', 'guests_dim', guests_dim_columns, 'guest_id')
-#
-#     ### дим расходов
-#     maintenance_dim_columns = ['maintenance_type_id',
-#                                'type',
-#                                'current_price',
-#                                'additional_info']
-#     load_dim_with_scd2('public', 'dwh', 'room_maintenance_type_dim', maintenance_dim_columns, 'maintenance_type_id')
-#
-#     ### rooms dim
-#     rooms_dim_columns = ['room_category_id', 'category_name', 'current_price']
-#
-#     load_dim_with_scd2('public', 'dwh', 'room_category_dim', rooms_dim_columns, 'room_category_id')
-#
-#     ### booking fact
-#     booking_fact_mapping = {
-#         'guests_dim': {'key_column': 'guest_id', 'sk_column': 'guest_sk'},
-#         'room_category_dim': {'key_column': 'room_category_id', 'sk_column': 'room_category_sk'},
-#
-#     }
-#     booking_date_columns = ['checkin_date', 'checkout_date']
-#     booking_matching_columns = ['visit_purpose', 'booking_id']
-#
-#     load_fact('public', 'dwh', 'booking_fact', booking_date_columns, booking_fact_mapping, booking_matching_columns)
-#
-#     ### stay fact
-#     stay_fact_mapping = {}
-#     stay_fact_date_columns = []
-#     stay_fact_matching_columns = ['booking_id', 'days_late', 'days_extend', 'rating', 'total_paid', 'total_nights']
-#     load_fact('public', 'dwh', 'stay_fact', stay_fact_date_columns, stay_fact_mapping, stay_fact_matching_columns)
-#
-#     ###факт расходов
-#     maintenance_fact_mapping = {
-#         'room_category_dim': {'key_column': 'room_category_id', 'sk_column': 'room_category_sk'},
-#         'room_maintenance_type_dim': {'key_column': 'maintenance_type_id', 'sk_column': 'maintenance_type_sk'}
-#     }
-#
-#     maintenance_fact_date_columns = ['date']
-#     maintenance_fact_matching_columns = ['amount', 'is_unscheduled']
-#     load_fact('public', 'dwh', 'maintenance_expense_fact', maintenance_fact_date_columns, maintenance_fact_mapping,
-#               maintenance_fact_matching_columns)
-#
-#     ### revenue fact
-#
-#     revenue_fact_mapping = {
-#         'room_category_dim': {'key_column': 'room_category_id', 'sk_column': 'room_category_sk'}
-#     }
-#     revenue_fact_date_columns = ['date']
-#     revenue_fact_matching_columns = ['amount']
-#
-#     load_fact('public', 'dwh', 'revenue_fact', revenue_fact_date_columns, revenue_fact_mapping,
-#               revenue_fact_matching_columns)
-
-
+# данные таблиц
 tables_with_scd1_data = {
     'booking_dim': {
         'non_key_columns': ['status', 'expected_length_of_stay'],

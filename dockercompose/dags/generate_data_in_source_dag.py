@@ -13,16 +13,16 @@ def generate_data_in_source_dag():
 
     @task  # генерация обновлений для измерений с scd2
     def generate_changes_task():
-        generate_guests_changes()
-        generate_rooms_changes()
-        generate_maintenance_types_changes()
+        generate_guests_changes(conn)
+        generate_rooms_changes(conn)
+        generate_maintenance_types_changes(conn)
 
     @task  # генерация новых данных
     def generate_new_data_task():
         generate_guest_data(conn)
-        generate_bookings()
-        generate_stays_and_revenue()
-        generate_maintenance_facts()
+        generate_bookings(conn)
+        generate_stays_and_revenue(conn)
+        generate_maintenance_facts(conn)
 
     # все изменения в источнике сразу загружаются в стейдж и накапливаются там до следующей загрузки в хранилище
     trigger_load_to_stage_task = TriggerDagRunOperator(

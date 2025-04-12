@@ -71,6 +71,32 @@ def update_data_marts(conn, dm_schema, dwh_schema):
     GROUP BY dd.month_name;
     """
 
+    # процент повторных бронирований
+    update_repeat_booking_percentage_dm_query = f"""
+    DROP TABLE IF EXISTS {dm_schema}.repeat_booking_percentage;
+
+    CREATE TABLE {dm_schema}.repeat_booking_percentage AS
+    WITH stays_count AS (
+        SELECT 
+            gd.guest_id, 
+            COUNT(DISTINCT sf.stay_id) AS cnt
+        FROM 
+            {dwh_schema}.stay_fact sf
+        INNER JOIN 
+            {dwh_schema}.booking_fact bf 
+            ON sf.booking_id = bf.booking_id
+        INNER JOIN 
+            {dwh_schema}.guests_dim gd 
+            ON gd.guest_sk = bf.guest_sk
+        GROUP BY 
+            gd.guest_id
+    )
+    SELECT 
+        ROUND(
+            ((SELECT COUNT(*) FROM stays_count WHERE cnt > 1)::DECIMAL / 
+             (SELECT COUNT(*) FROM stays_count) * 100), 2) AS repeat_booking_percentage;
+    """
+
     # процент подтвержденных бронирований
     update_stay_rate_dm_query = f"""
     DROP TABLE IF EXISTS {dm_schema}.stay_rate;
@@ -79,9 +105,7 @@ def update_data_marts(conn, dm_schema, dwh_schema):
     SELECT 
         ROUND(
             COUNT(bd.booking_id)::DECIMAL / 
-            (SELECT COUNT(booking_id) FROM {dwh_schema}.booking_dim) * 100, 
-            3
-        ) AS stay_rate_percentage
+            (SELECT COUNT(booking_id) FROM {dwh_schema}.booking_dim) * 100, 3) AS stay_rate_percentage
     FROM {dwh_schema}.booking_dim bd
     WHERE bd.status = 'checked_in';
     """
@@ -104,6 +128,14 @@ def update_data_marts(conn, dm_schema, dwh_schema):
     CREATE TABLE {dm_schema}.total_revenue AS
     SELECT SUM(amount)
     FROM {dwh_schema}.revenue_fact;
+    """
+
+    # общее количество проживаний
+    update_total_stays_dm_query = f"""
+    DROP TABLE IF EXISTS {dm_schema}.total_stays;
+    
+    CREATE TABLE {dm_schema}.total_stays AS
+    SELECT COUNT(DISTINCT stay_id) FROM {dwh_schema}.stay_fact;
     """
 
     # доходы и расходы по месяцам
@@ -292,8 +324,7 @@ def update_data_marts(conn, dm_schema, dwh_schema):
     DROP TABLE IF EXISTS {dm_schema}.most_popular_room_by_month;
 
     CREATE TABLE {dm_schema}.most_popular_room_by_month AS
-    WITH days_count AS (
-        SELECT dd.month_name,dd.month, rcd.category_name, COUNT(sf.booking_id) AS cnt
+        SELECT dd.month_name,rcd.category_name,COUNT(sf.booking_id) AS cnt
         FROM {dwh_schema}.stay_fact sf
         INNER JOIN {dwh_schema}.booking_fact bf 
             ON sf.booking_id = bf.booking_id
@@ -301,40 +332,21 @@ def update_data_marts(conn, dm_schema, dwh_schema):
             ON rcd.room_category_sk = bf.room_category_sk
         INNER JOIN {dwh_schema}.date_dim dd
             ON dd.date_id BETWEEN bf.checkin_date_id AND bf.checkout_date_id
-        GROUP BY dd.month_name, rcd.category_name,dd.month
-        ORDER BY dd.month
-    )
-    SELECT month_name, category_name
-    FROM days_count dc1
-    WHERE cnt = (
-        SELECT MAX(cnt)
-        FROM days_count dc2
-        WHERE dc1.month_name = dc2.month_name
-    );
+        GROUP BY dd.month_name, rcd.category_name;
     """
 
-    # предпочтения по типам номеров по национальности (топ 3)
+    # предпочтения по типам номеров по национальности
     update_room_preferences_by_nationality_dm_query = f"""
     DROP TABLE IF EXISTS {dm_schema}.room_preferences_by_nationality;
 
     CREATE TABLE {dm_schema}.room_preferences_by_nationality AS
-    WITH stays_count AS (
         SELECT gd.nationality, rcd.category_name, COUNT(*) AS cnt
         FROM {dwh_schema}.guests_dim gd
         INNER JOIN {dwh_schema}.booking_fact bf 
             ON bf.guest_sk = gd.guest_sk
         INNER JOIN {dwh_schema}.room_category_dim rcd 
             ON rcd.room_category_sk = bf.room_category_sk
-        GROUP BY gd.nationality, rcd.category_name
-    ),
-    stays_count_rank AS (
-        SELECT nationality, category_name,
-               ROW_NUMBER() OVER (PARTITION BY nationality ORDER BY cnt DESC) AS number
-        FROM stays_count
-    )
-    SELECT nationality, category_name, number AS rank
-    FROM stays_count_rank
-    WHERE number BETWEEN 1 AND 3;
+        GROUP BY gd.nationality, rcd.category_name;
     """
 
     # средняя продолжительность проживания и счет по странам
@@ -424,7 +436,7 @@ def update_data_marts(conn, dm_schema, dwh_schema):
     DROP TABLE IF EXISTS {dm_schema}.room_choice_by_visit_purpose;
 
     CREATE TABLE {dm_schema}.room_choice_by_visit_purpose AS
-    WITH total_stays AS (
+
         SELECT bf.visit_purpose, rcd.category_name, COUNT(*) AS cnt
         FROM {dwh_schema}.stay_fact sf
         INNER JOIN {dwh_schema}.booking_fact bf 
@@ -432,37 +444,20 @@ def update_data_marts(conn, dm_schema, dwh_schema):
         INNER JOIN {dwh_schema}.room_category_dim rcd 
             ON rcd.room_category_sk = bf.room_category_sk
         GROUP BY bf.visit_purpose, rcd.category_name
-    )
-    SELECT visit_purpose, category_name AS most_common_room
-    FROM total_stays t1
-    WHERE cnt = (
-        SELECT MAX(cnt)
-        FROM total_stays t2
-        WHERE t2.visit_purpose = t1.visit_purpose AND category_name <> 'standard'
-    );
     """
 
-    # наиболее распространенная цель визита по странам
+    # распределение целей визита по странам
     update_most_common_purpose_for_country_dm_query = f"""
     DROP TABLE IF EXISTS {dm_schema}.most_common_purpose_for_country;
 
     CREATE TABLE {dm_schema}.most_common_purpose_for_country AS
-    WITH visits_count AS (
-        SELECT gd.country_of_residence, bf.visit_purpose, COUNT(*) AS cnt
-        FROM {dwh_schema}.stay_fact sf
-        INNER JOIN {dwh_schema}.booking_fact bf 
-            ON sf.booking_id = bf.booking_id
-        INNER JOIN {dwh_schema}.guests_dim gd 
-            ON gd.guest_sk = bf.guest_sk
-        GROUP BY gd.country_of_residence, bf.visit_purpose
-    )
-    SELECT country_of_residence, visit_purpose AS most_common_purpose
-    FROM visits_count v1
-    WHERE cnt = (
-        SELECT MAX(cnt)
-        FROM visits_count v2
-        WHERE v1.country_of_residence = v2.country_of_residence
-    );
+    SELECT gd.country_of_residence, bf.visit_purpose, COUNT(*) AS cnt
+    FROM {dwh_schema}.stay_fact sf
+    INNER JOIN {dwh_schema}.booking_fact bf 
+        ON sf.booking_id = bf.booking_id
+    INNER JOIN {dwh_schema}.guests_dim gd 
+        ON gd.guest_sk = bf.guest_sk
+    GROUP BY gd.country_of_residence, bf.visit_purpose;
     """
 
     # средняя продолжительность проживания по целям визита
@@ -480,27 +475,18 @@ def update_data_marts(conn, dm_schema, dwh_schema):
     GROUP BY bf.visit_purpose;
     """
 
-    # наиболее распространенный месяц по целям визита
+    # распространение целей визита по типам номеров
     update_most_common_month_by_purpose_dm_query = f"""
     DROP TABLE IF EXISTS {dm_schema}.most_common_month_by_purpose;
 
     CREATE TABLE {dm_schema}.most_common_month_by_purpose AS
-    WITH visits_count AS (
-        SELECT bf.visit_purpose, dd.month_name, COUNT(*) AS cnt
-        FROM {dwh_schema}.stay_fact sf
-        INNER JOIN {dwh_schema}.booking_fact bf 
-            ON sf.booking_id = bf.booking_id
-        INNER JOIN {dwh_schema}.date_dim dd 
-            ON dd.date_id = bf.checkout_date_id
-        GROUP BY dd.month_name, bf.visit_purpose
-    )
-    SELECT visit_purpose, month_name AS most_common_month
-    FROM visits_count v1
-    WHERE cnt = (
-        SELECT MAX(cnt)
-        FROM visits_count v2
-        WHERE v1.visit_purpose = v2.visit_purpose
-    );
+    SELECT bf.visit_purpose, dd.month_name, COUNT(*) AS cnt
+    FROM {dwh_schema}.stay_fact sf
+    INNER JOIN {dwh_schema}.booking_fact bf 
+        ON sf.booking_id = bf.booking_id
+    INNER JOIN {dwh_schema}.date_dim dd 
+        ON dd.date_id = bf.checkout_date_id
+    GROUP BY dd.month_name, bf.visit_purpose;
     """
 
     # список всех запросов
@@ -509,13 +495,15 @@ def update_data_marts(conn, dm_schema, dwh_schema):
         update_revenue_and_stays_prct_by_room_type_dm_query,
         update_revenue_and_stays_prct_by_month_dm_query,
         update_stay_rate_dm_query,
+        update_total_stays_dm_query,
+        update_repeat_booking_percentage_dm_query,
         update_active_guests_number_dm_query,
         update_total_revenue_dm_query,
         update_revenue_expenses_by_month_dm_query,
         update_avg_stays_by_season_dm_query,
         update_avg_stays_by_month_dm_query,
         update_revenue_prct_by_season_dm_query,
-        update_avg_stays_weekend_and_non_weekend_dm_query,  # ???
+        update_avg_stays_weekend_and_non_weekend_dm_query,
         update_revenue_expenses_by_room_month_dm_query,
         update_unscheduled_maintenance_by_room_mtype_dm_query,
         update_unscheduled_maintenance_by_type_dm_query,

@@ -4,9 +4,6 @@ from scripts.load_to_stage import *
 from airflow.models.baseoperator import chain
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
-# получение словаря с таблицами и их данными из файла load_to_stage
-tables_data = tables_with_config
-
 staging_schema = 'public'
 source_schema = 'source'
 
