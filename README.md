@@ -18,6 +18,7 @@ This project aims to create a basic analytical Data Warehouse (DWH) for a hotel,
       - `load_to_stage.py` — Script for loading data into staging
       - `load_to_dwh.py` — Script for loading data into DWH
       - `update_data_marts.py` — Script for updating data marts
+      - `validate_data.py` - Script for data validation
 - `/dashboard_examples/` — Dashboard examples in picture format
 
 ### Component Descriptions
@@ -48,10 +49,13 @@ This project aims to create a basic analytical Data Warehouse (DWH) for a hotel,
 - **`update_data_marts.py`**  
   Aggregates data from the DWH and updates data marts for analytics.
 
+- **`validate_data.py`**  
+  Checking data integrity before loading to staging-schema using pandas library.
+
 ## Technologies
 
 - **Data Storage**: PostgreSQL — used for storing source, staging, DWH, and data mart data.
 - **Orchestration**: Apache Airflow — manages ETL process execution via DAG files.
-- **Data Processing**: Python — primary language for scripts, with `psycopg2` for PostgreSQL interactions.
+- **Data Processing**: Python — primary language for scripts, with `psycopg2` for PostgreSQL interactions and `pandas` for data validation.
 - **Visualization**: Apache Superset — provides data visualization and analytics dashboards.
 - **Containerization**: Docker — runs services (Airflow, PostgreSQL, Superset) via `docker-compose.yaml`.

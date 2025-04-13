@@ -28,6 +28,7 @@ def load_to_stage_dag():
                             table_name=table_name,
                             columns=table_data['columns'],
                             timestamp_column=table_data['timestamp_column'],
+                            relationships=table_data['relationships'],
                             src_conn=conn_source,
                             stg_conn=conn_stage)
 
