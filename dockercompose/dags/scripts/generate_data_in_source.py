@@ -1,7 +1,6 @@
 import random
 from faker import Faker
 from datetime import datetime, timedelta
-import psycopg2
 import logging
 
 fake = Faker()

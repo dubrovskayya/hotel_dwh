@@ -1,6 +1,5 @@
 from datetime import datetime
 import logging
-import psycopg2
 from scripts.load_to_dwh import start_logging, end_logging, end_logging_with_error, get_last_load_time
 
 logger = logging.getLogger(__name__)
@@ -21,7 +20,7 @@ def integrate_table(stg_schema, src_schema, table_name, columns, timestamp_colum
             last_load_to_stg = get_last_load_time(stg_schema, table_name, stg_cursor, 'stage_load_logs')
 
             # записи переносятся из источника в стейдж только если время их обновления
-            # или создания в источнике больше, чем время последней загрузки в стейдж
+            # или создания в источнике больше, чем время последней загрузки
             extract_data_query = f"""
             SELECT {', '.join(columns)} FROM {src_schema}.{table_name}
             WHERE {timestamp_column} > '{last_load_to_stg}' 
