@@ -3,9 +3,9 @@ services:
     image: postgres:latest
     container_name: source_crm
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: source_crm
+      POSTGRES_USER: ${POSTGRES_USER_ADMIN}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_ADMIN}
+      POSTGRES_DB: ${POSTGRES_DB_SOURCE}
     ports:
       - "5435:5432"
     volumes:
@@ -15,9 +15,9 @@ services:
     image: postgres:latest
     container_name: dwh
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: dwh
+      POSTGRES_USER: ${POSTGRES_USER_ADMIN}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_ADMIN}
+      POSTGRES_DB: ${POSTGRES_DB_DWH}
     ports:
       - "5436:5432"
     volumes:
@@ -27,9 +27,9 @@ services:
     image: postgres:latest
     container_name: postgres_airflow
     environment:
-      POSTGRES_USER: airflow
-      POSTGRES_PASSWORD: airflow
-      POSTGRES_DB: airflow_db
+      POSTGRES_USER: ${POSTGRES_USER_AIRFLOW}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_AIRFLOW}
+      POSTGRES_DB: ${POSTGRES_DB_AIRFLOW}
     ports:
       - "5437:5432"
     volumes:
@@ -39,10 +39,10 @@ services:
     image: apache/airflow:2.5.0
     container_name: airflow_webserver
     environment:
-      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres_airflow:5432/airflow_db
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=${AIRFLOW__CORE__SQL_ALCHEMY_CONN}
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
-      - AIRFLOW__WEBSERVER__SECRET_KEY=my_secret_key
+      - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW__WEBSERVER__SECRET_KEY}
       - AIRFLOW__WEBSERVER__RBAC=True
       - AIRFLOW__WEBSERVER__WORKERS=4
       - AIRFLOW__WEBSERVER__WEB_SERVER_PORT=8080
@@ -61,9 +61,9 @@ services:
     image: apache/airflow:2.5.0
     container_name: airflow_scheduler
     environment:
-      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres_airflow/airflow_db
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=${AIRFLOW__CORE__SQL_ALCHEMY_CONN}
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__WEBSERVER__SECRET_KEY=my_secret_key
+      - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW__WEBSERVER__SECRET_KEY}
       - AIRFLOW__WEBSERVER__RBAC=True
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - AIRFLOW__CORE__DEFAULT_TIMEZONE=Europe/Minsk
@@ -79,9 +79,9 @@ services:
     image: apache/superset:latest
     container_name: superset
     environment:
-      - SUPERSET_SECRET_KEY=your_secret_key_here
+      - SUPERSET_SECRET_KEY=${SUPERSET_SECRET_KEY}
       - SUPERSET_LOAD_EXAMPLES=no
-      - DATABASE_URL=postgresql+psycopg2://superset:superset@postgres_superset:5432/superset_db
+      - DATABASE_URL=${DATABASE_URL}
     ports:
       - "8088:8088"
     depends_on:

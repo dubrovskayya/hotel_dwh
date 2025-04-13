@@ -46,7 +46,7 @@ This project aims to create a basic analytical Data Warehouse (DWH) for a hotel,
   Transforms data from staging (filtering, enrichment, SCD2 and SCD1 for dimensions) and loads it into DWH tables (facts and dimensions).
 
 - **`update_data_marts.py`**  
-  Aggregates data from the DWH and updates data marts for analytics (e.g., revenue by room type).
+  Aggregates data from the DWH and updates data marts for analytics.
 
 ## Technologies
 

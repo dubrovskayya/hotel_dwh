@@ -69,56 +69,6 @@ def generate_guest_data(conn):
         logger.info('Records were inserted successfully.')
 
 
-# заполнение таблицы измерений с датами в dwh(1 раз)
-def fill_dates_dim_in_dwh(dwh_conn):
-    generate_dates_query = """
-        INSERT INTO dwh.date_dim (
-            date_id,                -- первичный ключ
-            full_date,              -- полная дата
-            year,                   -- год
-            quarter,                -- квартал
-            month,                  -- месяц
-            month_name,             -- название месяца
-            day_of_month,           -- день месяца
-            day_of_week,            -- день недели (1–7)
-            day_name,               -- название дня недели
-            week_of_year,           -- номер недели в году
-            is_weekend,             -- выходной день
-            season                  -- сезон
-        )
-        SELECT
-            TO_CHAR(d, 'YYYYMMDD')::INT AS date_id, -- Преобразование даты в числовой формат YYYYMMDD
-            d AS full_date,                         -- Полная дата
-            EXTRACT(YEAR FROM d) AS year,           -- Извлечение года
-            'Q' || EXTRACT(QUARTER FROM d) AS quarter, -- Формирование квартала (например, Q1, Q2)
-            EXTRACT(MONTH FROM d) AS month,         -- Извлечение номера месяца
-            TO_CHAR(d, 'Month') AS month_name,      -- Название месяца
-            EXTRACT(DAY FROM d) AS day_of_month,    -- Извлечение дня месяца
-            EXTRACT(ISODOW FROM d) AS day_of_week,  
-            TO_CHAR(d, 'Day') AS day_name,         
-            EXTRACT(WEEK FROM d) AS week_of_year,  
-            CASE 
-                WHEN EXTRACT(ISODOW FROM d) IN (6, 7) THEN TRUE 
-                ELSE FALSE 
-            END AS is_weekend,                      -- Проверка на выходной день
-            CASE
-                WHEN EXTRACT(MONTH FROM d) IN (12, 1, 2) THEN 'Winter'  -- Зима
-                WHEN EXTRACT(MONTH FROM d) IN (3, 4, 5) THEN 'Spring'  -- Весна
-                WHEN EXTRACT(MONTH FROM d) IN (6, 7, 8) THEN 'Summer'  -- Лето
-                ELSE 'Autumn'                                          -- Осень
-            END AS season                            -- Определение сезона
-        FROM generate_series(
-            '2020-01-01'::DATE,                     -- Начальная дата
-            '2027-12-31'::DATE,                     -- Конечная дата
-            '1 day'::INTERVAL                       -- Шаг: 1 день
-        ) AS d;
-    """
-
-    with dwh_conn.cursor() as cursor:
-        cursor.execute(generate_dates_query)
-        dwh_conn.commit()
-
-
 # заполнение начальных значений в таблице измерений room_category_dim(1 раз)
 def fill_initial_room_types(conn):
     # типы номеров с начальными ценами
@@ -548,3 +498,53 @@ def generate_maintenance_types_changes(conn):
             cursor.execute(update_query)
         conn.commit()
         logger.info(f'Price was successfully updated for {change_types_number} room maintenance types.')
+
+
+# заполнение таблицы измерений с датами в dwh(1 раз)
+def fill_dates_dim_in_dwh(dwh_conn):
+    generate_dates_query = """
+        INSERT INTO dwh.date_dim (
+            date_id,               
+            full_date,              
+            year,                   
+            quarter,               
+            month,                
+            month_name,           
+            day_of_month,          
+            day_of_week,            
+            day_name,               
+            week_of_year,           
+            is_weekend,             
+            season                  
+        )
+        SELECT
+            TO_CHAR(d, 'YYYYMMDD')::INT AS date_id,
+            d AS full_date,                        
+            EXTRACT(YEAR FROM d) AS year,         
+            'Q' || EXTRACT(QUARTER FROM d) AS quarter,
+            EXTRACT(MONTH FROM d) AS month,        
+            TO_CHAR(d, 'Month') AS month_name,    
+            EXTRACT(DAY FROM d) AS day_of_month,  
+            EXTRACT(ISODOW FROM d) AS day_of_week,  
+            TO_CHAR(d, 'Day') AS day_name,         
+            EXTRACT(WEEK FROM d) AS week_of_year,  
+            CASE 
+                WHEN EXTRACT(ISODOW FROM d) IN (6, 7) THEN TRUE 
+                ELSE FALSE 
+            END AS is_weekend,                    
+            CASE
+                WHEN EXTRACT(MONTH FROM d) IN (12, 1, 2) THEN 'Winter' 
+                WHEN EXTRACT(MONTH FROM d) IN (3, 4, 5) THEN 'Spring'  
+                WHEN EXTRACT(MONTH FROM d) IN (6, 7, 8) THEN 'Summer' 
+                ELSE 'Autumn'                                         
+            END AS season                           
+        FROM generate_series(
+            '2020-01-01'::DATE,                    
+            '2027-12-31'::DATE,                   
+            '1 day'::INTERVAL                       
+        ) AS d;
+    """
+
+    with dwh_conn.cursor() as cursor:
+        cursor.execute(generate_dates_query)
+        dwh_conn.commit()
