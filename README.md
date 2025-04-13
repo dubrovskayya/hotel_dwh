@@ -18,6 +18,7 @@ This project aims to create a basic analytical Data Warehouse (DWH) for a hotel,
       - `load_to_stage.py` — Script for loading data into staging
       - `load_to_dwh.py` — Script for loading data into DWH
       - `update_data_marts.py` — Script for updating data marts
+- `/dashboard_exmples/` — Dashboard examples in pdf format
 
 ### Component Descriptions
 
