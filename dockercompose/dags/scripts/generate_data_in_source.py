@@ -35,7 +35,7 @@ def generate_guest_data(conn):
         # генерация возраста с распределением
         age_group = random.choices(age_groups, age_weights)[0]
         date_of_birth = fake.date_of_birth(minimum_age=age_group[0],
-                                           maximum_age=age_group[1])  # Дата рождения (18–99 лет)
+                                           maximum_age=age_group[1])  # дата рождения (18–90 лет)
         formatted_date_of_birth = date_of_birth.strftime('%Y-%m-%d')
 
         nationality = random.choice(nationalities)  # национальность из списка

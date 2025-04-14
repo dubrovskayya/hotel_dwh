@@ -5,7 +5,7 @@ def validate_data(data, columns, table_name, logger):
     invalid_rows = []
     masks = []
     df = pd.DataFrame(data=data, columns=columns)
-    #
+    # удаляются дубликаты
     df.drop_duplicates()
 
     # проверка на null-значения

@@ -28,7 +28,6 @@ def generate_data_in_source_dag():
     trigger_load_to_stage_task = TriggerDagRunOperator(
         task_id='trigger_load_to_stage',
         trigger_dag_id='load_to_stage_dag'
-        # reset_dag_run=True
     )
 
     generate_changes_task() >> generate_new_data_task() >> trigger_load_to_stage_task

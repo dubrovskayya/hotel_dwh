@@ -67,7 +67,6 @@ def load_to_dwh_dag():
     trigger_dms_update_task = TriggerDagRunOperator(
         task_id='trigger_dms_update_dag',
         trigger_dag_id='update_data_marts_dag'
-        # reset_dag_run=True
     )
     # установка порядка выполнения scd1 -> scd2 -> facts -> dms_update
     chain(*load_with_scd1_tasks, *load_with_scd2_tasks, *load_fact_tasks,trigger_dms_update_task)

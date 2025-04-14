@@ -23,8 +23,7 @@ def integrate_table(stg_schema, src_schema, table_name, columns, relationships, 
             # присоединение связанных таблиц для проверки целостности ссылок в источнике
             joins_placeholder = ' '.join(
                 [f"""LEFT JOIN {src_schema}.{table} on {src_schema}.{table}.{column} = t.{column}""" for table, column
-                 in
-                 relationships.items()])
+                 in relationships.items()])
             rel_existence_conditions_placeholder = ' AND ' + ' AND '.join(
                 [f"""{src_schema}.{table}.{column} IS NOT NULL""" for table, column in relationships.items()]) if len(relationships) > 0 else ''
 
